@@ -45,9 +45,9 @@ ARCHIVO_FOTOGRAMAS = "fotogramas.xlsx"
 # Valores iniciales del ajuste manual de posición. Se pueden cambiar en vivo
 # desde el panel una vez que el programa está corriendo.
 # Corrimiento inicial en X (horizontal)
-CORRECCION_X_INICIAL = 150.0
+CORRECCION_X_INICIAL = -350.0
 # Corrimiento inicial en Y (vertical)
-CORRECCION_Y_INICIAL = 45.0
+CORRECCION_Y_INICIAL = -400.0
 
 
 # Función principal: arma todo y arranca el programa
