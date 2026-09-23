@@ -1,23 +1,17 @@
 # interfaz.py
-#
-# Panel de controles sencillo, fijo en el lado derecho de la ventana. Está
-# hecho a mano con glfw + PyOpenGL, sin librerías de interfaz externas (las
-# que se probaron, pyimgui e imgui-bundle, no funcionaron en este entorno).
-#
+# Panel de controles sencillo, fijo en el lado derecho de la ventana. 
+# Está hecho a mano con glfw + PyOpenGL, sin librerías de interfaz externas (las que se probaron, pyimgui e imgui-bundle, no funcionaron en este entorno).
 # Tiene:
 #   - Botón Play / Pause (pausa SOLO la animación de fotogramas.xlsx)
 #   - Campo numérico de FPS
 #   - Campos numéricos de CORRECCION X y CORRECCION Y
 #
 # OpenGL y glfw no traen texto ni botones, así que se resuelve así:
-#   - Una fuente de píxeles de 5x7 hecha a mano (solo los caracteres que se
-#     usan: dígitos, '.', '-' y las letras de las etiquetas), dibujada con
-#     rectángulos (GL_QUADS).
-#   - Botones y campos son rectángulos. Los clics se detectan por "polling":
-#     en cada frame se compara la posición del mouse con cada rectángulo (igual
-#     que se hizo con ESC en windows.py).
-#   - Los campos de texto usan glfw.set_char_callback para recibir las teclas
-#     que se escriben, y polling para BACKSPACE (borrar) y ENTER (confirmar).
+#   - Una fuente de píxeles de 5x7 hecha a mano (solo los caracteres que se usan: dígitos, '.', '-' y las letras de las etiquetas), 
+#       dibujada con rectángulos (GL_QUADS).
+#   - Botones y campos son rectángulos. Los clics se detectan por "polling": en cada frame se compara la posición del mouse con cada rectángulo (igual
+#       que se hizo con ESC en windows.py).
+#   - Los campos de texto usan glfw.set_char_callback para recibir las teclas que se escriben, y polling para BACKSPACE (borrar) y ENTER (confirmar).
 
 # Para leer mouse y teclado
 import glfw
@@ -113,10 +107,8 @@ _ANCHO_GLIFO = 5
 # Alto de cada carácter en píxeles de la fuente (7 filas)
 _ALTO_GLIFO = 7
 
-
-# _dibujar_rectangulo(x, y, ancho, alto, color, relleno): dibuja un rectángulo
-# cuya esquina superior izquierda está en (x, y). Si relleno es True se dibuja
-# sólido, si es False solo se dibuja el borde.
+# _dibujar_rectangulo(x, y, ancho, alto, color, relleno): dibuja un rectángulo cuya esquina superior izquierda está en (x, y). 
+# Si relleno es True se dibuja sólido, si es False solo se dibuja el borde.
 def _dibujar_rectangulo(x, y, ancho, alto, color, relleno=True):
     # Si el color trae 3 valores (sin alfa) se usa glColor3f
     if len(color) == 3:
@@ -134,11 +126,8 @@ def _dibujar_rectangulo(x, y, ancho, alto, color, relleno=True):
     # Termina el rectángulo
     glEnd()
 
-
-# _dibujar_texto(x, y, texto, escala, color): dibuja el texto empezando en
-# (x, y) (esquina superior izquierda) con la fuente de píxeles 5x7. Los
-# caracteres que no estén en la fuente se dibujan como espacio. 'escala' es
-# cuántos píxeles de pantalla mide cada píxel de la fuente.
+# _dibujar_texto(x, y, texto, escala, color): dibuja el texto empezando en (x, y) (esquina superior izquierda) con la fuente de píxeles 5x7. 
+# Los caracteres que no estén en la fuente se dibujan como espacio. 'escala' es cuántos píxeles de pantalla mide cada píxel de la fuente.
 def _dibujar_texto(x, y, texto, escala=2, color=COLOR_TEXTO):
     # Pone el color del texto
     glColor3f(*color)
@@ -167,25 +156,19 @@ def _dibujar_texto(x, y, texto, escala=2, color=COLOR_TEXTO):
         # Mueve el cursor a la derecha para el siguiente carácter (el ancho del carácter + 1 de separación)
         cursor_x += (_ANCHO_GLIFO + 1) * escala
 
-
-# _ancho_texto(texto, escala): regresa cuántos píxeles de ancho ocupa el texto
-# con esa escala. Se usa para centrar el texto del botón.
+# _ancho_texto(texto, escala): regresa cuántos píxeles de ancho ocupa el texto con esa escala. Se usa para centrar el texto del botón.
 def _ancho_texto(texto, escala=2):
     # Cantidad de caracteres por lo que mide cada uno (con su separación)
     return len(texto) * (_ANCHO_GLIFO + 1) * escala
 
-
-# _punto_dentro_de_rect(px, py, rect): dice si el punto (px, py) está dentro de
-# un rectángulo. rect es (x, y, ancho, alto).
+# _punto_dentro_de_rect(px, py, rect): dice si el punto (px, py) está dentro de un rectángulo. rect es (x, y, ancho, alto).
 def _punto_dentro_de_rect(px, py, rect):
     # Separa los cuatro datos del rectángulo
     x, y, ancho, alto = rect
     # True solo si el punto está entre los bordes izquierdo/derecho y arriba/abajo
     return x <= px <= x + ancho and y <= py <= y + alto
 
-
-# _formatear_numero(valor): muestra los enteros sin decimales (ej. "30") y los
-# demás con 2 decimales (ej. "-15.50"), para que no se vea "30.00" de más
+# _formatear_numero(valor): muestra los enteros sin decimales (ej. "30") y los demás con 2 decimales (ej. "-15.50"), para que no se vea "30.00" de más
 def _formatear_numero(valor):
     # Si el número es igual a su parte entera, no tiene decimales
     if valor == int(valor):
@@ -195,8 +178,7 @@ def _formatear_numero(valor):
     return f"{valor:.2f}"
 
 
-# Clase de una caja de texto donde se escribe un solo número. Se usa para FPS,
-# CORRECCION X y CORRECCION Y.
+# Clase de una caja de texto donde se escribe un solo número. Se usa para FPS, CORRECCION X y CORRECCION Y.
 class _CampoNumerico:
     # Constructor: recibe el valor con el que empieza el campo
     def __init__(self, valorInicial):
@@ -213,9 +195,7 @@ class _CampoNumerico:
         # El texto a editar empieza siendo el valor actual
         self.textoEditando = _formatear_numero(self.valor)
 
-    # confirmar(): intenta convertir lo escrito a número. Si no es un número
-    # válido, se descarta el cambio (queda el valor anterior) y se avisa por
-    # mensaje.py.
+    # confirmar(): intenta convertir lo escrito a número. Si no es un número válido, se descarta el cambio (queda el valor anterior) y se avisa por mensaje.py.
     def confirmar(self):
         # Solo si se estaba editando y el texto no está vacío ni es solo "-" o "."
         if self.textoEditando is not None and self.textoEditando not in ("", "-", "."):
@@ -232,7 +212,6 @@ class _CampoNumerico:
     def texto_mostrado(self):
         # Si se está editando, muestra lo que se va escribiendo; si no, el valor ya formateado
         return self.textoEditando if self.textoEditando is not None else _formatear_numero(self.valor)
-
 
 # Clase del panel completo: botón, campos, dibujo y lectura de mouse/teclado
 class Interfaz:

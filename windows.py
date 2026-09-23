@@ -1,16 +1,12 @@
 # windows.py
-#
 # Se encarga de todo lo de la ventana:
 #   - Inicia glfw y crea el contexto de OpenGL.
-#   - Configura la proyección en PÍXELES ABSOLUTOS: 1 unidad de coordenada
-#     siempre es 1 píxel en pantalla, sin importar el tamaño de la ventana. Si
-#     la ventana crece se ve más lienzo, pero el dibujo nunca se estira.
-#   - El origen (0, 0) está en la esquina superior izquierda y el eje Y crece
-#     hacia ABAJO (como en las pantallas). Pasar de las coordenadas del Excel
-#     (cartesianas) a las de pantalla lo hace dibujar.py, no este archivo.
-#   - Corre el loop principal: procesa eventos, limpia la pantalla, llama a la
-#     función de dibujo que le pasen, cambia los buffers y controla los FPS a
-#     mano con time.sleep().
+#   - Configura la proyección en PÍXELES ABSOLUTOS: 1 unidad de coordenada siempre es 1 píxel en pantalla, sin importar el tamaño de la ventana. 
+#       Si la ventana crece se ve más lienzo, pero el dibujo nunca se estira.
+#   - El origen (0, 0) está en la esquina superior izquierda y el eje Y crece hacia ABAJO (como en las pantallas). Pasar de las coordenadas del Excel
+#       (cartesianas) a las de pantalla lo hace dibujar.py, no este archivo.
+#   - Corre el loop principal: procesa eventos, limpia la pantalla, llama a la función de dibujo que le pasen, cambia los buffers y controla los FPS a
+#       mano con time.sleep().
 
 # Para medir el tiempo y hacer pausas (control de FPS)
 import time
@@ -94,11 +90,9 @@ def establecerColorFondo(valorColor):
     glClearColor(r, g, b, a)
 
 
-# inicializar(...): crea la ventana y el contexto de OpenGL. Se llama una sola
-# vez, antes de ejecutar() y antes de cualquier dibujo. Regresa True si todo
-# salió bien y False si algo falló.
-def inicializar(ancho=ANCHO_DEFECTO, alto=ALTO_DEFECTO, titulo=TITULO_DEFECTO,
-                 pantalla_completa=False, colorFondo=COLOR_FONDO_DEFECTO):
+# inicializar(...): crea la ventana y el contexto de OpenGL. Se llama una sola vez, antes de ejecutar() y antes de cualquier dibujo. 
+# Regresa True si todo salió bien y False si algo falló.
+def inicializar(ancho=ANCHO_DEFECTO, alto=ALTO_DEFECTO, titulo=TITULO_DEFECTO, pantalla_completa=False, colorFondo=COLOR_FONDO_DEFECTO):
     # Para poder cambiar las variables globales de arriba
     global _ventana, _ancho_actual, _alto_actual
 
@@ -179,18 +173,13 @@ def obtenerVentanaGLFW():
 #   7. Cambia los buffers (así se muestra lo dibujado)
 #   8. Duerme hasta que toque el siguiente frame, según el FPS de ese momento
 #
-# fpsObjetivo puede ser un número fijo, o una función sin argumentos que
-# regresa el FPS actual (como interfaz.obtenerFPS). Con la función, el FPS se
-# puede cambiar en vivo sin reiniciar el loop.
+# fpsObjetivo puede ser un número fijo, o una función sin argumentos que regresa el FPS actual (como interfaz.obtenerFPS). 
+# Con la función, el FPS se puede cambiar en vivo sin reiniciar el loop.
 #
-# Control de tiempo: se lleva un "reloj objetivo" que avanza una duración de
-# frame en cada vuelta. Si el programa se atrasa más de un frame completo, el
-# reloj se sincroniza con el tiempo actual en vez de intentar recuperar todo el
-# atraso de golpe (eso causaría una ráfaga de frames sin pausa).
-#
-# funcionDibujo, funcionUI y funcionEventosUI se reciben como parámetros para
-# que windows.py no dependa de dibujar.py ni de interfaz.py. Solo necesita
-# algo que se pueda llamar.
+# Control de tiempo: se lleva un "reloj objetivo" que avanza una duración de frame en cada vuelta. 
+# Si el programa se atrasa más de un frame completo, el reloj se sincroniza con el tiempo actual en vez de intentar recuperar todo el atraso de golpe (eso causaría una ráfaga de frames sin pausa).
+# funcionDibujo, funcionUI y funcionEventosUI se reciben como parámetros para que windows.py no dependa de dibujar.py ni de interfaz.py. 
+# Solo necesita algo que se pueda llamar.
 def ejecutar(funcionDibujo, fpsObjetivo=FPS_DEFECTO, funcionUI=None, funcionEventosUI=None):
     # Si la ventana no se creó, avisa y no hace nada
     if _ventana is None:

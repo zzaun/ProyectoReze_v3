@@ -1,8 +1,6 @@
 # main.py
-#
 # Este es el archivo que se ejecuta para correr el programa (python main.py).
 # Aquí solo se juntan las piezas de los otros archivos, no dibuja nada por sí solo.
-#
 # Lo que hace, en orden:
 #   1. Crea el objeto que dibuja y el que reproduce la animación.
 #   2. Calcula UN solo offset (desplazamiento) usando las coordenadas de
@@ -35,9 +33,9 @@ ALTO_VENTANA = 1000
 # Texto de la barra de título de la ventana
 TITULO_VENTANA = "Dibujo de Capas"
 # Color de fondo de la ventana (blanco, en hexadecimal)
-COLOR_FONDO = "#FFFFFF"
+COLOR_FONDO = "#DDDDDD"
 # Fotogramas por segundo con los que arranca la animación
-FPS_INICIAL = 15
+FPS_INICIAL = 8
 
 # Archivo Excel de la imagen estática
 ARCHIVO_CAPAS = "capas.xlsx"
@@ -47,9 +45,9 @@ ARCHIVO_FOTOGRAMAS = "fotogramas.xlsx"
 # Valores iniciales del ajuste manual de posición. Se pueden cambiar en vivo
 # desde el panel una vez que el programa está corriendo.
 # Corrimiento inicial en X (horizontal)
-CORRECCION_X_INICIAL = 0.0
+CORRECCION_X_INICIAL = 150.0
 # Corrimiento inicial en Y (vertical)
-CORRECCION_Y_INICIAL = -200.0
+CORRECCION_Y_INICIAL = 45.0
 
 
 # Función principal: arma todo y arranca el programa

@@ -24,8 +24,7 @@ import mensaje
 # Clase que maneja la animación por fotogramas
 class Animar:
     # Constructor: se ejecuta al crear un objeto Animar.
-    # dibujador: un objeto Dibujar que ya existe. Se reutiliza en vez de crear
-    #            otro, para compartir el mismo offset con el resto del dibujo.
+    # dibujador: un objeto Dibujar que ya existe. Se reutiliza en vez de crear otro, para compartir el mismo offset con el resto del dibujo.
     # archivo: ruta del Excel con los fotogramas.
     def __init__(self, dibujador, archivo="fotogramas.xlsx"):
         # Guarda el dibujador para usarlo después
