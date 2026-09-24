@@ -35,7 +35,7 @@ TITULO_VENTANA = "Dibujo de Capas"
 # Color de fondo de la ventana (blanco, en hexadecimal)
 COLOR_FONDO = "#DDDDDD"
 # Fotogramas por segundo con los que arranca la animación
-FPS_INICIAL = 8
+FPS_INICIAL = 12
 
 # Archivo Excel de la imagen estática
 ARCHIVO_CAPAS = "capas.xlsx"
@@ -45,9 +45,9 @@ ARCHIVO_FOTOGRAMAS = "fotogramas.xlsx"
 # Valores iniciales del ajuste manual de posición. Se pueden cambiar en vivo
 # desde el panel una vez que el programa está corriendo.
 # Corrimiento inicial en X (horizontal)
-CORRECCION_X_INICIAL = -350.0
+CORRECCION_X_INICIAL = -200.0
 # Corrimiento inicial en Y (vertical)
-CORRECCION_Y_INICIAL = -400.0
+CORRECCION_Y_INICIAL = -100.0
 
 
 # Función principal: arma todo y arranca el programa
