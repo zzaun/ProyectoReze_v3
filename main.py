@@ -1,122 +1,170 @@
 # main.py
-# Este es el archivo que se ejecuta para correr el programa (python main.py).
-# Aquí solo se juntan las piezas de los otros archivos, no dibuja nada por sí solo.
-# Lo que hace, en orden:
-#   1. Crea el objeto que dibuja y el que reproduce la animación.
-#   2. Calcula UN solo offset (desplazamiento) usando las coordenadas de
-#      capas.xlsx y de fotogramas.xlsx juntas, para que todo quede alineado.
-#   3. Abre la ventana y crea el panel de controles (Play/Pause, FPS y
-#      corrección X/Y).
-#   4. Corre el loop principal. En cada vuelta dibuja:
-#        a) el fotograma que toca de fotogramas.xlsx (fondo animado; si está
-#           en pausa se dibuja el mismo sin avanzar)
-#        b) todas las capas de capas.xlsx encima (imagen estática)
-#        c) el panel de controles encima de todo
-#      La corrección X/Y y los FPS se leen del panel en cada vuelta, por eso
-#      se pueden cambiar mientras el programa corre.
-#
-# No hace falta saber los nombres de las hojas de los Excel, se detectan solos.
+# Este es el punto de entrada del programa. Su unico trabajo es inicializar todas las piezas (ventana, dibujo, animacion, interfaz,
+# audio) y conectarlas entre si. No tiene logica propia de dibujo ni de audio: eso vive en cada archivo correspondiente.
+# En cada refresco de pantalla se hace, en este orden: 1) se aplica la correccion de posicion vigente, 2) se revisa si hay que pausar o
+# reproducir un efecto de sonido, 3) se dibuja el fondo animado, 4) se dibuja encima la imagen estatica, 5) se dibuja el panel de interfaz.
+# No hace falta saber de antemano los nombres de las hojas de ningun archivo excel: se detectan solos. Al arrancar, se imprime en consola
+# la lista de fotogramas con su indice, para saber que numero poner en EFECTOS_POR_FOTOGRAMA sin tener que contar las hojas a mano.
 
-# Módulo que maneja la ventana y el loop principal
+# Importamos windows.py, que maneja la ventana y el loop principal.
 import windows
-# Clase que dibuja las capas (relleno y bordes)
+# Importamos la clase Dibujar, que sabe dibujar capas en pantalla.
 from dibujar import Dibujar
-# Clase que reproduce los fotogramas como animación
+# Importamos la clase Animar, que recorre los fotogramas de la animacion.
 from animar import Animar
-# Clase del panel de controles
+# Importamos la clase Interfaz, que dibuja el panel de control.
 from interfaz import Interfaz
+# Importamos la clase Audio, que maneja musica y efectos de sonido.
+from audio import Audio
+# Importamos mensaje.py para imprimir la lista de fotogramas al arrancar.
+import mensaje
 
-# Ancho de la ventana en píxeles
+# Ancho de la ventana, en pixeles.
 ANCHO_VENTANA = 1500
-# Alto de la ventana en píxeles
+# Alto de la ventana, en pixeles.
 ALTO_VENTANA = 1000
-# Texto de la barra de título de la ventana
+# Texto que aparece en la barra de titulo de la ventana.
 TITULO_VENTANA = "Dibujo de Capas"
-# Color de fondo de la ventana (blanco, en hexadecimal)
-COLOR_FONDO = "#DDDDDD"
-# Fotogramas por segundo con los que arranca la animación
-FPS_INICIAL = 12
+# Color de fondo de la ventana (blanco).
+COLOR_FONDO = "#FFFFFF"
+# FPS con el que arranca el programa (se puede cambiar despues desde la interfaz).
+FPS_INICIAL = 12.0
 
-# Archivo Excel de la imagen estática
+# Nombre del archivo excel con la imagen estatica.
 ARCHIVO_CAPAS = "capas.xlsx"
-# Archivo Excel de la animación (cada hoja es un fotograma)
+# Nombre del archivo excel con los fotogramas de la animacion.
 ARCHIVO_FOTOGRAMAS = "fotogramas.xlsx"
+# Nombre del archivo de musica de fondo. Si no existe, audio.py avisa
+# el error en consola y el programa sigue funcionando sin musica.
+ARCHIVO_MUSICA = "ChainsawMan_TheMovie_RezeArc.mp3"
 
-# Valores iniciales del ajuste manual de posición. Se pueden cambiar en vivo
-# desde el panel una vez que el programa está corriendo.
-# Corrimiento inicial en X (horizontal)
-CORRECCION_X_INICIAL = -200.0
-# Corrimiento inicial en Y (vertical)
-CORRECCION_Y_INICIAL = -100.0
+# Valores iniciales del ajuste manual de posicion (despues se pueden
+# cambiar en vivo desde el panel de interfaz).
+CORRECCION_X_INICIAL = -50.0
+CORRECCION_Y_INICIAL = -70.0
+# Volumen inicial de musica y efectos (0.0 = silencio, 1.0 = maximo).
+VOLUMEN_INICIAL = 0.25
+
+# Aqui se decide que efecto de sonido suena en cada fotograma.
+# La llave es el indice INTERNO del fotograma (empieza en 0, y se reinicia solo cada vez que la animacion vuelve a empezar). El valor
+# es el nombre del efecto, tal como esta guardado en audio.py ("click", "encendido" o "explosion"). Para saber que numero de indice le toca a
+# cada fotograma, revisa la lista que se imprime en consola al arrancar el programa (dice "Fotograma N: 'NombreDeLaHoja'" por cada uno).
+EFECTOS_POR_FOTOGRAMA = {
+    0: "click",
+    3: "encendido",
+    5: "explosion",
+}
 
 
-# Función principal: arma todo y arranca el programa
+# Funcion principal del programa. Arma todas las piezas y arranca el loop.
 def main():
-    # Crea el objeto que dibuja las capas en pantalla
+    # Creamos el objeto que sabe dibujar capas.
     dibujador = Dibujar()
-    # Crea el objeto de la animación. Recibe el mismo dibujador para reutilizarlo
+    # Creamos el objeto que maneja la animacion, usando el mismo dibujador.
     animador = Animar(dibujador, archivo=ARCHIVO_FOTOGRAMAS)
 
-    # Se calcula UN solo offset con las coordenadas de los dos archivos juntos
-    # (la imagen estática y todos los fotogramas). Así comparten el mismo
-    # sistema de coordenadas y la imagen estática no se desalinea del fondo animado.
-    # Junta todas las coordenadas de capas.xlsx
+    # Pedimos la lista de fotogramas (hojas de fotogramas.xlsx) y la imprimimos con su indice, para saber que numero usar en
+    # EFECTOS_POR_FOTOGRAMA sin tener que contar las hojas a mano.
+    lista_fotogramas = animador.obtenerListaFotogramas()
+    # Recorremos la lista junto con su posicion (empezando en 0).
+    for indice, nombre in enumerate(lista_fotogramas):
+        mensaje.info(f"Fotograma {indice}: '{nombre}'")
+
+    # Juntamos las coordenadas de la imagen estatica...
     coordenadas_estaticas = dibujador.obtenerTodasLasCoordenadas(archivo=ARCHIVO_CAPAS)
-    # Junta todas las coordenadas de todos los fotogramas
+    # ...y las coordenadas de todos los fotogramas de la animacion...
     coordenadas_animadas = animador.obtenerTodasLasCoordenadas()
-    # Une las dos listas en una sola
+    # ...en una sola lista, para calcular UN solo offset que sirva para ambos.
     todas_coordenadas = coordenadas_estaticas + coordenadas_animadas
-    # Calcula el offset con un margen de 40 píxeles alrededor del dibujo
+    # Calculamos el offset (con 40 pixeles de margen) para que todo se vea dentro de la ventana.
     dibujador.calcularOffsetDesdeCoordenadas(todas_coordenadas, margen=40)
 
-    # Abre la ventana con el tamaño, título y color de fondo definidos arriba.
-    # Si no se pudo abrir, se sale de la función y el programa termina.
+    # Creamos la ventana. Si falla (por ejemplo, no hay pantalla disponible), se cancela todo.
     if not windows.inicializar(ancho=ANCHO_VENTANA, alto=ALTO_VENTANA,
                                 titulo=TITULO_VENTANA, colorFondo=COLOR_FONDO):
+        # Si inicializar() regreso False, no seguimos con el resto del programa.
         return
 
-    # Crea el panel de controles
+    # Creamos el panel de interfaz, dandole el handle de la ventana ya creada.
     interfaz = Interfaz(
-        # La ventana de glfw, para poder leer el mouse y el teclado
         ventanaGLFW=windows.obtenerVentanaGLFW(),
-        # Función que da el tamaño actual de la ventana (para pegar el panel a la derecha)
         obtenerTamanoVentana=windows.obtenerTamano,
-        # FPS con los que arranca el panel
         fpsInicial=FPS_INICIAL,
-        # Corrección X con la que arranca el panel
         correccionXInicial=CORRECCION_X_INICIAL,
-        # Corrección Y con la que arranca el panel
         correccionYInicial=CORRECCION_Y_INICIAL,
+        volumenInicial=VOLUMEN_INICIAL,
     )
 
-    # Función que dibuja UN frame completo (sin el panel). windows.ejecutar la
-    # llama en cada vuelta del loop.
+    # Creamos el objeto de audio (esto ya genera los efectos sinteticos y prepara el mixer, listo para usarse).
+    audio = Audio()
+    # Dejamos el volumen inicial en el mismo que se le dio a la interfaz.
+    audio.establecerVolumen(VOLUMEN_INICIAL)
+    # Arrancamos la musica de fondo en loop infinito, desde ya.
+    audio.reproducirMusicaLoop(ARCHIVO_MUSICA)
+
+    # Guardamos aqui el ultimo fotograma que se mostro, para saber cuando CAMBIA de fotograma (y no repetir un efecto de sonido en
+    # cada refresco de pantalla si la animacion esta en pausa).
+    indice_anterior_mostrado = None
+    # Guardamos aqui si la animacion ya estaba pausada en el frame anterior, para saber cuando el usuario ACABA de darle Play o Pause.
+    pausado_anterior = False
+    # Guardamos aqui el ultimo volumen aplicado, para solo llamar a establecerVolumen() cuando de verdad cambia (no en cada frame).
+    volumen_anterior = VOLUMEN_INICIAL
+
+    # Esta funcion se llama una vez por cada refresco de pantalla, y dibuja todo lo que debe verse en ese frame.
     def dibujarFrame():
-        # Lee la corrección X/Y que tiene el panel en este momento y se la pasa al dibujador
+        # nonlocal deja usar y modificar las variables de main() aqui adentro.
+        nonlocal indice_anterior_mostrado, pausado_anterior, volumen_anterior
+
+        # Revisamos el estado actual del boton Play/Pause.
+        pausado_actual = interfaz.estaPausado()
+        # Si el estado de pausa CAMBIO desde el frame anterior...
+        if pausado_actual != pausado_anterior:
+            # ...y ahora esta pausado, pausamos tambien la musica.
+            if pausado_actual:
+                audio.pausarMusica()
+            # ...y si ya no esta pausado, reanudamos la musica.
+            else:
+                audio.reanudarMusica()
+            # Actualizamos el estado guardado, para la siguiente comparacion.
+            pausado_anterior = pausado_actual
+
+        # Revisamos el volumen actual del panel de interfaz.
+        volumen_actual = interfaz.obtenerVolumen()
+        # Si el volumen CAMBIO desde el frame anterior, lo aplicamos.
+        if volumen_actual != volumen_anterior:
+            audio.establecerVolumen(volumen_actual)
+            volumen_anterior = volumen_actual
+
+        # Vemos que fotograma le toca mostrar a la animacion en este frame.
+        indice_actual = animador.indiceFotogramaActual
+        # Si ese fotograma es distinto al que se mostro la vez pasada (o sea, de verdad avanzamos, no estamos repitiendo por pausa)...
+        if indice_actual != indice_anterior_mostrado:
+            # ...y ademas ese indice tiene un efecto de sonido asignado...
+            if indice_actual in EFECTOS_POR_FOTOGRAMA:
+                # ...lo reproducimos.
+                audio.reproducirEfecto(EFECTOS_POR_FOTOGRAMA[indice_actual])
+        # Guardamos el indice actual, para comparar en el siguiente frame.
+        indice_anterior_mostrado = indice_actual
+
+        # Aplicamos la correccion de posicion vigente (puede cambiar en vivo desde la interfaz).
         dibujador.establecerCorreccion(interfaz.obtenerCorreccionX(), interfaz.obtenerCorreccionY())
-        # Dibuja el fondo animado. Si el panel está en pausa no avanza al siguiente fotograma
-        animador.dibujarFotogramaActual(avanzar=not interfaz.estaPausado())
-        # Dibuja la imagen estática encima del fondo
+        # Dibujamos el fondo animado. Si esta pausado, se redibuja el mismo fotograma sin avanzar.
+        animador.dibujarFotogramaActual(avanzar=not pausado_actual)
+        # Dibujamos encima la imagen estatica (todas las hojas de capas.xlsx).
         dibujador.dibujarTodosLosGrupos(archivo=ARCHIVO_CAPAS)
 
-    # Arranca el loop principal. No termina hasta que se cierre la ventana.
+    # Arrancamos el loop principal de la ventana, pasandole:
     windows.ejecutar(
-        # Función que dibuja cada frame
-        dibujarFrame,
-        # Se le pasa la función (sin paréntesis) para que lea el FPS del panel en vivo
-        fpsObjetivo=interfaz.obtenerFPS,
-        # Función que dibuja el panel, se llama después del dibujo para quedar encima
-        funcionUI=interfaz.dibujar,
-        # Función que revisa mouse y teclado del panel en cada vuelta
-        funcionEventosUI=interfaz.procesarEventos,
+        dibujarFrame,                          # que dibujar en cada frame,
+        fpsObjetivo=interfaz.obtenerFPS,        # el FPS (leido en vivo desde la interfaz),
+        funcionUI=interfaz.dibujar,             # como dibujar el panel encima,
+        funcionEventosUI=interfaz.procesarEventos,  # y como procesar clicks/teclado del panel.
     )
 
-    # Cuando la ventana se cierra, se cierra también la interfaz
+    # Cuando el loop termina (se cerro la ventana), liberamos la interfaz.
     interfaz.cerrar()
 
 
-# Esto solo se cumple si se ejecuta este archivo directamente (python main.py),
-# no si otro archivo lo importa
+# Esto hace que main() solo se ejecute si corremos este archivo directamente (y no si alguien mas lo importa).
 if __name__ == "__main__":
-    # Arranca el programa
     main()

@@ -1,76 +1,68 @@
 # interfaz.py
-# Panel de controles sencillo, fijo en el lado derecho de la ventana. 
-# Está hecho a mano con glfw + PyOpenGL, sin librerías de interfaz externas (las que se probaron, pyimgui e imgui-bundle, no funcionaron en este entorno).
-# Tiene:
-#   - Botón Play / Pause (pausa SOLO la animación de fotogramas.xlsx)
-#   - Campo numérico de FPS
-#   - Campos numéricos de CORRECCION X y CORRECCION Y
+# Panel de control minimalista, fijo en el costado derecho de la
+# ventana, hecho a mano con glfw + PyOpenGL puro (sin librerias de UI
+# externas: tanto pyimgui como imgui-bundle resultaron incompatibles
+# con este entorno, por eso se construyo asi).
 #
-# OpenGL y glfw no traen texto ni botones, así que se resuelve así:
-#   - Una fuente de píxeles de 5x7 hecha a mano (solo los caracteres que se usan: dígitos, '.', '-' y las letras de las etiquetas), 
-#       dibujada con rectángulos (GL_QUADS).
-#   - Botones y campos son rectángulos. Los clics se detectan por "polling": en cada frame se compara la posición del mouse con cada rectángulo (igual
-#       que se hizo con ESC en windows.py).
-#   - Los campos de texto usan glfw.set_char_callback para recibir las teclas que se escriben, y polling para BACKSPACE (borrar) y ENTER (confirmar).
+# Incluye:
+#   - Boton Play / Pause (pausa la animacion y la musica de fondo)
+#   - Input numerico de FPS
+#   - Inputs numericos de CORRECCION_X y CORRECCION_Y
+#   - Input numerico de VOLUMEN (musica + efectos de sonido)
+#
+# Como OpenGL/glfw no traen texto ni widgets, esto se resuelve con una
+# fuente de pixeles 5x7 hecha a mano, botones/inputs como rectangulos,
+# deteccion de click por "polling" (comparar el mouse contra cada
+# rectangulo cada frame), y glfw.set_char_callback para capturar lo
+# que se teclea dentro de un input enfocado.
 
-# Para leer mouse y teclado
+# Importamos glfw para leer mouse/teclado directamente.
 import glfw
-# Funciones y constantes de OpenGL que se usan para dibujar el panel
+# Importamos las funciones de OpenGL que usamos para dibujar rectangulos y texto.
 from OpenGL.GL import (
     glBegin, glEnd, glVertex2f, glColor3f, glColor4f,
     GL_QUADS, GL_LINE_LOOP,
 )
 
-# Para imprimir avisos en la consola
+# Importamos mensaje.py para avisar en consola si algo no se puede inicializar.
 import mensaje
 
-# Ancho del panel en píxeles
+# Ancho fijo del panel, en pixeles.
 ANCHO_PANEL = 260
-# Color de fondo del panel: (rojo, verde, azul, alfa), gris oscuro casi opaco
+# Color de fondo del panel (gris oscuro, casi opaco).
 COLOR_FONDO_PANEL = (0.12, 0.12, 0.12, 0.95)
-# Color del texto: casi blanco
+# Color del texto normal.
 COLOR_TEXTO = (0.95, 0.95, 0.95)
-# Color del botón Play/Pause: azul
+# Color del boton Play/Pause.
 COLOR_BOTON = (0.25, 0.45, 0.85)
-# Color del botón cuando el mouse está encima: azul más claro
+# Color del boton cuando el mouse esta encima (hover).
 COLOR_BOTON_HOVER = (0.32, 0.55, 0.95)
-# Color de las cajas de texto: gris
+# Color de fondo de una caja de texto normal.
 COLOR_CAJA = (0.20, 0.20, 0.20)
-# Color de la caja de texto que se está editando
+# Color de fondo de una caja de texto cuando esta enfocada (se esta editando).
 COLOR_CAJA_ENFOCADA = (0.28, 0.28, 0.35)
-# Color del borde de la caja que se está editando: azul claro
+# Color del borde de una caja enfocada.
 COLOR_BORDE_ENFOCADO = (0.40, 0.70, 1.0)
 
-# FPS más bajo que se permite en el campo de FPS
+# Rango permitido para el valor de FPS.
 FPS_MINIMO = 0.1
-# FPS más alto que se permite en el campo de FPS
 FPS_MAXIMO = 240.0
 
-# Espacio entre el borde del panel y su contenido
+# Rango permitido para el volumen (0 = silencio, 1 = volumen maximo).
+VOLUMEN_MINIMO = 0.0
+VOLUMEN_MAXIMO = 1.0
+
+# Medidas de layout del panel, todas en pixeles.
 MARGEN = 15
-# Alto del botón en píxeles
 ALTO_BOTON = 32
-# Alto de las cajas de texto en píxeles
 ALTO_CAJA = 26
-# Alto que se reserva para el texto de cada etiqueta
 ALTO_ETIQUETA = 16
-# Espacio vertical entre elementos
 ESPACIADO = 8
 
-# Fuente de píxeles 5x7 hecha a mano. Cada carácter es una lista de 7 textos
-# (las filas) de 5 caracteres (las columnas). Un "1" es un píxel pintado y un
-# "0" es un píxel vacío. Por ejemplo, la "I" es:
-#   11111
-#   00100
-#   00100
-#   00100
-#   00100
-#   00100
-#   11111
-# Todos los caracteres siguen el mismo patrón, por eso solo se explica aquí.
-# Solo están los caracteres que usa el panel; cualquier otro se dibuja como espacio.
+# Fuente de pixeles 5x7: cada caracter es una lista de 7 filas, cada
+# fila un texto de 5 caracteres ('1' = pixel encendido, '0' = apagado).
+# Solo se definen los caracteres que esta interfaz realmente usa.
 _FUENTE = {
-    # Dígitos
     "0": ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],
     "1": ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],
     "2": ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],
@@ -81,10 +73,8 @@ _FUENTE = {
     "7": ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],
     "8": ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],
     "9": ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],
-    # Punto y guion (para escribir decimales y números negativos)
     ".": ["00000", "00000", "00000", "00000", "00000", "01100", "01100"],
     "-": ["00000", "00000", "00000", "11111", "00000", "00000", "00000"],
-    # Letras
     "P": ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
     "A": ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
     "U": ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
@@ -99,363 +89,312 @@ _FUENTE = {
     "I": ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
     "N": ["10001", "11001", "10101", "10101", "10011", "10001", "10001"],
     "X": ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
-    # Espacio (todo vacío)
+    "V": ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+    "M": ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
     " ": ["00000", "00000", "00000", "00000", "00000", "00000", "00000"],
 }
-# Ancho de cada carácter en píxeles de la fuente (5 columnas)
+# Ancho de cada glifo, en "pixeles" de la fuente.
 _ANCHO_GLIFO = 5
-# Alto de cada carácter en píxeles de la fuente (7 filas)
+# Alto de cada glifo, en "pixeles" de la fuente.
 _ALTO_GLIFO = 7
 
-# _dibujar_rectangulo(x, y, ancho, alto, color, relleno): dibuja un rectángulo cuya esquina superior izquierda está en (x, y). 
-# Si relleno es True se dibuja sólido, si es False solo se dibuja el borde.
+
+# Dibuja un rectangulo relleno (o solo el borde, si relleno=False).
 def _dibujar_rectangulo(x, y, ancho, alto, color, relleno=True):
-    # Si el color trae 3 valores (sin alfa) se usa glColor3f
+    # Si el color tiene 3 numeros, es RGB; si tiene 4, es RGBA (con transparencia).
     if len(color) == 3:
         glColor3f(*color)
-    # Si trae 4 valores (con alfa) se usa glColor4f
     else:
         glColor4f(*color)
-    # GL_QUADS dibuja un cuadrilátero relleno, GL_LINE_LOOP dibuja solo su contorno
+    # GL_QUADS dibuja un rectangulo relleno; GL_LINE_LOOP solo el contorno.
     glBegin(GL_QUADS if relleno else GL_LINE_LOOP)
-    # Las cuatro esquinas, en orden: arriba-izquierda, arriba-derecha, abajo-derecha y abajo-izquierda
     glVertex2f(x, y)
     glVertex2f(x + ancho, y)
     glVertex2f(x + ancho, y + alto)
     glVertex2f(x, y + alto)
-    # Termina el rectángulo
     glEnd()
 
-# _dibujar_texto(x, y, texto, escala, color): dibuja el texto empezando en (x, y) (esquina superior izquierda) con la fuente de píxeles 5x7. 
-# Los caracteres que no estén en la fuente se dibujan como espacio. 'escala' es cuántos píxeles de pantalla mide cada píxel de la fuente.
+
+# Dibuja un texto empezando en (x, y), usando la fuente de pixeles.
 def _dibujar_texto(x, y, texto, escala=2, color=COLOR_TEXTO):
-    # Pone el color del texto
     glColor3f(*color)
-    # Posición horizontal donde va el siguiente carácter
+    # cursor_x va avanzando a la derecha conforme dibujamos cada letra.
     cursor_x = x
-    # Recorre cada carácter del texto (en mayúsculas, porque la fuente solo tiene mayúsculas)
+    # Recorremos cada caracter del texto (en mayusculas, la fuente solo tiene mayusculas).
     for caracter in texto.upper():
-        # Busca sus filas en la fuente. Si no existe, usa las del espacio.
+        # Buscamos el dibujo del caracter; si no existe, usamos un espacio en blanco.
         filas = _FUENTE.get(caracter, _FUENTE[" "])
-        # Recorre las 7 filas (enumerate da el número de fila y su texto)
+        # Recorremos cada fila del glifo (de arriba hacia abajo).
         for fila_idx, fila in enumerate(filas):
-            # Recorre las 5 columnas de esa fila
+            # Recorremos cada columna de esa fila.
             for col_idx, bit in enumerate(fila):
-                # Solo se dibuja donde hay un "1"
+                # Si el pixel esta encendido ('1'), dibujamos un cuadradito ahi.
                 if bit == "1":
-                    # Posición en pantalla de este píxel de la fuente
                     px = cursor_x + col_idx * escala
                     py = y + fila_idx * escala
-                    # Dibuja un cuadrito de tamaño 'escala' con sus cuatro esquinas
                     glBegin(GL_QUADS)
                     glVertex2f(px, py)
                     glVertex2f(px + escala, py)
                     glVertex2f(px + escala, py + escala)
                     glVertex2f(px, py + escala)
                     glEnd()
-        # Mueve el cursor a la derecha para el siguiente carácter (el ancho del carácter + 1 de separación)
+        # Avanzamos el cursor para la siguiente letra (5 columnas + 1 de espacio).
         cursor_x += (_ANCHO_GLIFO + 1) * escala
 
-# _ancho_texto(texto, escala): regresa cuántos píxeles de ancho ocupa el texto con esa escala. Se usa para centrar el texto del botón.
+
+# Calcula cuanto espacio (en pixeles) ocupa un texto al dibujarse, sin dibujarlo.
 def _ancho_texto(texto, escala=2):
-    # Cantidad de caracteres por lo que mide cada uno (con su separación)
     return len(texto) * (_ANCHO_GLIFO + 1) * escala
 
-# _punto_dentro_de_rect(px, py, rect): dice si el punto (px, py) está dentro de un rectángulo. rect es (x, y, ancho, alto).
+
+# Revisa si el punto (px, py) cae dentro de un rectangulo (x, y, ancho, alto).
 def _punto_dentro_de_rect(px, py, rect):
-    # Separa los cuatro datos del rectángulo
     x, y, ancho, alto = rect
-    # True solo si el punto está entre los bordes izquierdo/derecho y arriba/abajo
     return x <= px <= x + ancho and y <= py <= y + alto
 
-# _formatear_numero(valor): muestra los enteros sin decimales (ej. "30") y los demás con 2 decimales (ej. "-15.50"), para que no se vea "30.00" de más
+
+# Convierte un numero a texto para mostrarlo: sin decimales si es
+# entero (ej. '30'), con 2 decimales si no lo es (ej. '-15.50').
 def _formatear_numero(valor):
-    # Si el número es igual a su parte entera, no tiene decimales
     if valor == int(valor):
-        # Lo muestra como entero
         return str(int(valor))
-    # Si tiene decimales, los muestra con 2 dígitos
     return f"{valor:.2f}"
 
 
-# Clase de una caja de texto donde se escribe un solo número. Se usa para FPS, CORRECCION X y CORRECCION Y.
+# Representa un input de texto para UN solo valor numerico (se usa
+# para FPS, CORRECCION_X, CORRECCION_Y y VOLUMEN).
 class _CampoNumerico:
-    # Constructor: recibe el valor con el que empieza el campo
+
+    # Al crear el campo, se le da su valor inicial.
     def __init__(self, valorInicial):
-        # Valor numérico actual del campo
+        # El valor numerico "de verdad" (el que usa el resto del programa).
         self.valor = float(valorInicial)
-        # Texto que se está escribiendo. None significa que el campo no se está editando.
+        # El texto que se esta escribiendo mientras el campo esta enfocado.
+        # None significa que el campo no esta enfocado ahorita.
         self.textoEditando = None
-        # Rectángulo (x, y, ancho, alto) que ocupa el campo en pantalla. Se
-        # actualiza en cada frame cuando se dibuja.
+        # El rectangulo donde se dibuja este campo (se recalcula cada frame).
         self.rect = (0, 0, 0, 0)
 
-    # enfocar(): el usuario hizo clic en el campo y empieza a editarlo
+    # Se llama cuando el usuario hace click en este campo: empieza a editarlo.
     def enfocar(self):
-        # El texto a editar empieza siendo el valor actual
         self.textoEditando = _formatear_numero(self.valor)
 
-    # confirmar(): intenta convertir lo escrito a número. Si no es un número válido, se descarta el cambio (queda el valor anterior) y se avisa por mensaje.py.
+    # Se llama cuando se deja de editar este campo (Enter o click afuera):
+    # intenta convertir el texto escrito a numero.
     def confirmar(self):
-        # Solo si se estaba editando y el texto no está vacío ni es solo "-" o "."
+        # Si lo que quedo escrito no es un numero valido, se descarta el cambio.
         if self.textoEditando is not None and self.textoEditando not in ("", "-", "."):
-            # Intenta convertir el texto a número
             try:
                 self.valor = float(self.textoEditando)
-            # Si no se puede (por ejemplo "1.2.3"), avisa y deja el valor anterior
             except ValueError:
                 mensaje.advertencia(f"'{self.textoEditando}' no es un numero valido, se descarta.")
-        # Termina la edición
+        # Al confirmar, dejamos de estar en modo edicion.
         self.textoEditando = None
 
-    # texto_mostrado(): regresa el texto que se debe ver en la caja
+    # Regresa el texto que debe mostrarse ahorita en el campo (lo que se
+    # esta escribiendo, o el valor actual si no se esta editando).
     def texto_mostrado(self):
-        # Si se está editando, muestra lo que se va escribiendo; si no, el valor ya formateado
         return self.textoEditando if self.textoEditando is not None else _formatear_numero(self.valor)
 
-# Clase del panel completo: botón, campos, dibujo y lectura de mouse/teclado
+
+# Clase principal: agrupa todo el panel de interfaz.
 class Interfaz:
-    # Constructor: recibe la ventana de glfw, una función que da el tamaño de la
-    # ventana y los valores iniciales de FPS y de las correcciones.
+
+    # Se ejecuta al crear la interfaz. Prepara los campos y conecta el
+    # callback de teclado con glfw.
     def __init__(self, ventanaGLFW, obtenerTamanoVentana,
-                 fpsInicial=1.0, correccionXInicial=0.0, correccionYInicial=0.0):
-        # Guarda la ventana para poder leer mouse y teclado
+                 fpsInicial=1.0, correccionXInicial=0.0, correccionYInicial=0.0,
+                 volumenInicial=1.0):
+        # Guardamos el handle de la ventana, para leer mouse/teclado.
         self._ventana = ventanaGLFW
-        # Guarda la función que da el tamaño actual de la ventana
+        # Guardamos la funcion que nos dice el tamano actual de la ventana.
         self._obtenerTamanoVentana = obtenerTamanoVentana
 
-        # Indica si la animación está en pausa (empieza reproduciéndose)
+        # Estado de Play/Pause (False = reproduciendo, True = pausado).
         self.pausado = False
-        # Campo de FPS
+        # Creamos cada campo numerico con su valor inicial.
         self._campoFPS = _CampoNumerico(fpsInicial)
-        # Campo de corrección X
         self._campoCorreccionX = _CampoNumerico(correccionXInicial)
-        # Campo de corrección Y
         self._campoCorreccionY = _CampoNumerico(correccionYInicial)
-        # Diccionario para encontrar cada campo por su nombre corto
+        self._campoVolumen = _CampoNumerico(volumenInicial)
+        # Diccionario para poder buscar un campo por su nombre corto.
         self._campos = {
             "fps": self._campoFPS,
             "cx": self._campoCorreccionX,
             "cy": self._campoCorreccionY,
+            "vol": self._campoVolumen,
         }
-        # Nombre del campo que se está editando: None, "fps", "cx" o "cy"
+        # Nombre del campo que esta enfocado ahorita (None = ninguno).
         self._campoEnfocado = None
 
-        # Rectángulo del botón (se actualiza en cada frame al dibujar)
+        # Rectangulo del boton Play/Pause (se recalcula cada frame).
         self._botonRect = (0, 0, 0, 0)
-        # Los tres siguientes recuerdan si el mouse, BACKSPACE y ENTER estaban
-        # presionados en el frame anterior. Sirven para detectar solo el
-        # momento en que se presionan y no repetir la acción mientras se mantienen.
+        # Guardamos el estado del mouse/teclado del frame anterior, para
+        # detectar el momento EXACTO en que se presiona algo (no cada
+        # frame que se mantiene presionado).
         self._mousePresionadoAntes = False
         self._backspaceAntes = False
         self._enterAntes = False
 
-        # Registra la función que glfw llama cada vez que se teclea un carácter
+        # Le decimos a glfw que nos avise cada vez que se teclea un caracter.
         glfw.set_char_callback(ventanaGLFW, self._callback_char)
 
-        # Avisa por consola que la interfaz quedó lista
         mensaje.info("Interfaz inicializada (dibujada a mano, sin dependencias externas).")
 
-    # --- Getters: funciones que main.py y windows.py llaman en cada frame ---
+    # --- Getters usados por main.py en cada frame ---
 
-    # Regresa True si la animación está en pausa
+    # Regresa si la animacion esta pausada.
     def estaPausado(self):
         return self.pausado
 
-    # Regresa los FPS que tiene el campo de FPS
+    # Regresa el FPS actual configurado en el panel.
     def obtenerFPS(self):
         return self._campoFPS.valor
 
-    # Regresa la corrección X que tiene el campo
+    # Regresa la correccion de posicion en X.
     def obtenerCorreccionX(self):
         return self._campoCorreccionX.valor
 
-    # Regresa la corrección Y que tiene el campo
+    # Regresa la correccion de posicion en Y.
     def obtenerCorreccionY(self):
         return self._campoCorreccionY.valor
 
-    # --- Entrada de texto (callback de caracteres de glfw) ---
+    # Regresa el volumen actual configurado en el panel (0.0 a 1.0).
+    def obtenerVolumen(self):
+        return self._campoVolumen.valor
 
-    # _callback_char(ventana, codepoint): glfw la llama sola cada vez que el
-    # usuario escribe un carácter. codepoint es el número del carácter.
+    # --- Entrada de texto (glfw lo llama solo cuando se teclea algo) ---
+
+    # Se ejecuta cada vez que se teclea un caracter en la ventana.
     def _callback_char(self, ventana, codepoint):
-        # Si ningún campo está siendo editado, se ignora lo que se teclee
+        # Si no hay ningun campo enfocado, no hacemos nada con lo tecleado.
         if self._campoEnfocado is None:
             return
-        # Convierte el número del carácter a texto
+        # Convertimos el codigo de caracter a texto real.
         caracter = chr(codepoint)
-        # Solo se aceptan dígitos, punto y guion
+        # Solo aceptamos digitos, punto y guion (numeros validos).
         if caracter in "0123456789.-":
-            # Busca el campo que se está editando
             campo = self._campos[self._campoEnfocado]
-            # Agrega el carácter al final de lo escrito
             campo.textoEditando += caracter
 
-    # --- Lógica de mouse y teclado (windows.ejecutar la llama en cada vuelta) ---
+    # --- Logica de entrada (mouse/teclado), se llama una vez por frame ---
 
-    # procesarEventos(): revisa por polling el clic del mouse, BACKSPACE y ENTER.
-    # Se llama una vez por frame, después de glfw.poll_events().
+    # Revisa clicks del mouse y teclas especiales (BACKSPACE, ENTER).
+    # Debe llamarse despues de glfw.poll_events().
     def procesarEventos(self):
-        # Posición actual del mouse en la ventana
+        # Posicion actual del mouse.
         mouse_x, mouse_y = glfw.get_cursor_pos(self._ventana)
-        # True si el botón izquierdo del mouse está presionado ahora
+        # Si el boton izquierdo esta presionado ahorita.
         mouse_presionado = glfw.get_mouse_button(self._ventana, glfw.MOUSE_BUTTON_LEFT) == glfw.PRESS
-        # Es un clic nuevo solo si ahora está presionado y en el frame anterior no
+        # Un "click" cuenta solo en el instante en que se presiona (no mientras se mantiene).
         click_este_frame = mouse_presionado and not self._mousePresionadoAntes
-        # Guarda el estado actual para comparar en el siguiente frame
         self._mousePresionadoAntes = mouse_presionado
 
-        # Solo se hace algo si hubo un clic nuevo
         if click_este_frame:
-            # Si el clic fue sobre el botón, cambia entre pausa y play
+            # Si el click fue sobre el boton Play/Pause, cambiamos el estado.
             if _punto_dentro_de_rect(mouse_x, mouse_y, self._botonRect):
-                # not invierte el valor: True pasa a False y False a True
                 self.pausado = not self.pausado
-                # Quita el foco de cualquier campo (y confirma lo que se estaba escribiendo)
                 self._enfocar_campo(None)
-            # Si no fue en el botón, se revisa si fue en algún campo
             else:
-                # Empieza asumiendo que el clic no cayó en ningún campo
+                # Si no fue el boton, revisamos si fue sobre algun campo numerico.
                 clic_en_algun_campo = False
-                # Revisa los campos uno por uno
                 for nombre, campo in self._campos.items():
-                    # Si el clic cayó dentro de este campo
                     if _punto_dentro_de_rect(mouse_x, mouse_y, campo.rect):
-                        # Le da el foco a este campo
                         self._enfocar_campo(nombre)
-                        # Anota que sí cayó en un campo
                         clic_en_algun_campo = True
-                        # Ya no hace falta revisar los demás
                         break
-                # Si el clic no cayó en ningún campo, se quita el foco
+                # Si el click fue afuera de todo, confirmamos y desenfocamos.
                 if not clic_en_algun_campo:
-                    # Clic afuera: confirma lo escrito y quita el foco
                     self._enfocar_campo(None)
 
-        # Las teclas solo importan si hay un campo siendo editado
+        # Si hay un campo enfocado, revisamos BACKSPACE y ENTER.
         if self._campoEnfocado is not None:
-            # True si BACKSPACE está presionado ahora
             backspace_presionado = glfw.get_key(self._ventana, glfw.KEY_BACKSPACE) == glfw.PRESS
-            # Solo actúa en el momento en que se presiona (no mientras se mantiene)
+            # Igual que con el click: solo contamos el instante en que se presiona.
             if backspace_presionado and not self._backspaceAntes:
-                # Busca el campo que se está editando
                 campo = self._campos[self._campoEnfocado]
-                # Borra el último carácter escrito
                 campo.textoEditando = campo.textoEditando[:-1]
-            # Guarda el estado para el siguiente frame
             self._backspaceAntes = backspace_presionado
 
-            # True si se presiona ENTER o el ENTER del teclado numérico
             enter_presionado = (
                 glfw.get_key(self._ventana, glfw.KEY_ENTER) == glfw.PRESS
                 or glfw.get_key(self._ventana, glfw.KEY_KP_ENTER) == glfw.PRESS
             )
-            # Solo actúa en el momento en que se presiona
             if enter_presionado and not self._enterAntes:
-                # Confirma lo escrito y quita el foco
+                # ENTER confirma el campo y lo desenfoca.
                 self._enfocar_campo(None)
-            # Guarda el estado para el siguiente frame
             self._enterAntes = enter_presionado
 
-        # Los FPS se limitan al rango permitido en cuanto cambian:
-        # min() evita que pase del máximo y max() evita que baje del mínimo.
+        # El FPS se recorta al rango permitido apenas cambia.
         self._campoFPS.valor = max(FPS_MINIMO, min(FPS_MAXIMO, self._campoFPS.valor))
+        # El volumen se recorta entre 0.0 y 1.0 apenas cambia.
+        self._campoVolumen.valor = max(VOLUMEN_MINIMO, min(VOLUMEN_MAXIMO, self._campoVolumen.valor))
 
-    # _enfocar_campo(nombre): cambia el campo que se está editando. Antes
-    # confirma (convierte a número) el que se estaba editando, si había uno.
-    # nombre puede ser "fps", "cx", "cy" o None (ninguno).
+    # Cambia cual campo esta enfocado. Antes de cambiar, confirma (convierte
+    # a numero) el que se estaba editando, si habia uno.
     def _enfocar_campo(self, nombre):
-        # Si había un campo en edición, se confirma lo que se escribió
         if self._campoEnfocado is not None:
             self._campos[self._campoEnfocado].confirmar()
-        # Guarda cuál es el nuevo campo enfocado
         self._campoEnfocado = nombre
-        # Si es un campo (no None), empieza su edición
         if nombre is not None:
             self._campos[nombre].enfocar()
 
-    # --- Dibujo del panel (windows.ejecutar lo llama en cada vuelta) ---
+    # --- Dibujo del panel, se llama una vez por frame, encima de la escena ---
 
-    # dibujar(): dibuja el panel completo. Se llama una vez por frame, DESPUÉS
-    # de dibujar la escena, para que quede encima.
+    # Dibuja el panel completo: fondo, boton, y los 4 campos numericos.
     def dibujar(self):
-        # Tamaño actual de la ventana
+        # Tamano actual de la ventana, para saber donde queda el borde derecho.
         ancho_ventana, alto_ventana = self._obtenerTamanoVentana()
-        # Posición X donde empieza el panel: pegado al borde derecho (nunca menor a 0)
         panel_x = max(0, ancho_ventana - ANCHO_PANEL)
 
-        # Dibuja el fondo del panel, de arriba a abajo de la ventana
+        # Fondo del panel: un rectangulo solido de alto completo.
         _dibujar_rectangulo(panel_x, 0, ANCHO_PANEL, alto_ventana, COLOR_FONDO_PANEL)
 
-        # X donde empieza el contenido (con margen desde el borde del panel)
         x = panel_x + MARGEN
-        # Ancho disponible para el contenido (el panel menos los márgenes de los dos lados)
         ancho_util = ANCHO_PANEL - 2 * MARGEN
-        # Y donde va el siguiente elemento. Empieza arriba, con margen. Va bajando conforme se dibuja.
         y = MARGEN
 
-        # Título del panel
         _dibujar_texto(x, y, "CONTROLES", escala=2)
-        # Baja la posición para dejar espacio debajo del título
         y += ALTO_ETIQUETA + ESPACIADO * 2
 
-        # --- Botón Play/Pause ---
-        # Guarda el rectángulo del botón para detectar clics en procesarEventos()
+        # --- Boton Play/Pause ---
         self._botonRect = (x, y, ancho_util, ALTO_BOTON)
-        # Posición del mouse, para saber si está encima del botón
         mouse_x, mouse_y = glfw.get_cursor_pos(self._ventana)
-        # True si el mouse está sobre el botón
         con_hover = _punto_dentro_de_rect(mouse_x, mouse_y, self._botonRect)
-        # Dibuja el botón, con el color claro si el mouse está encima
         _dibujar_rectangulo(x, y, ancho_util, ALTO_BOTON,
                              COLOR_BOTON_HOVER if con_hover else COLOR_BOTON)
-        # El botón dice PAUSE mientras se reproduce y PLAY cuando está en pausa
         etiqueta_boton = "PAUSE" if not self.pausado else "PLAY"
-        # X para centrar el texto horizontalmente dentro del botón
         texto_x = x + (ancho_util - _ancho_texto(etiqueta_boton, escala=2)) / 2
-        # Y para centrar el texto verticalmente dentro del botón
         texto_y = y + (ALTO_BOTON - _ALTO_GLIFO * 2) / 2
-        # Dibuja el texto del botón
         _dibujar_texto(texto_x, texto_y, etiqueta_boton, escala=2)
-        # Baja la posición para dejar espacio debajo del botón
         y += ALTO_BOTON + ESPACIADO * 2
 
-        # --- Campos numéricos ---
-        # Cada llamada dibuja un campo y regresa la Y donde va el siguiente
+        # --- Campos numericos, uno debajo del otro ---
         y = self._dibujar_campo(x, y, ancho_util, "FPS", self._campoFPS, "fps")
         y = self._dibujar_campo(x, y, ancho_util, "CORRECCION X", self._campoCorreccionX, "cx")
         y = self._dibujar_campo(x, y, ancho_util, "CORRECCION Y", self._campoCorreccionY, "cy")
+        y = self._dibujar_campo(x, y, ancho_util, "VOLUMEN", self._campoVolumen, "vol")
 
-    # _dibujar_campo(x, y, ancho, etiqueta, campo, nombre): dibuja un campo
-    # numérico con su etiqueta encima. Regresa la Y donde debe ir el siguiente
-    # elemento.
+    # Dibuja un campo individual (etiqueta + caja de texto), y regresa la
+    # posicion Y donde debe empezar el siguiente campo.
     def _dibujar_campo(self, x, y, ancho, etiqueta, campo, nombre):
-        # Dibuja la etiqueta (texto pequeño) encima de la caja
         _dibujar_texto(x, y, etiqueta, escala=1)
-        # Baja para dejar el espacio de la etiqueta
         y += ALTO_ETIQUETA
 
-        # Guarda el rectángulo de la caja para detectar clics en procesarEventos()
         campo.rect = (x, y, ancho, ALTO_CAJA)
-        # True si este campo es el que se está editando
         enfocado = self._campoEnfocado == nombre
-        # Dibuja la caja, con otro color si se está editando
         _dibujar_rectangulo(x, y, ancho, ALTO_CAJA,
                              COLOR_CAJA_ENFOCADA if enfocado else COLOR_CAJA)
-        # Si se está editando, le dibuja además un borde de color
+        # Si esta enfocado, le dibujamos un borde de color encima para que se note.
         if enfocado:
             _dibujar_rectangulo(x, y, ancho, ALTO_CAJA, COLOR_BORDE_ENFOCADO, relleno=False)
 
-        # Texto que se debe ver en la caja (lo que se escribe o el valor actual)
         texto = campo.texto_mostrado()
-        # Lo dibuja dentro de la caja: 6 píxeles desde la izquierda y centrado verticalmente
         _dibujar_texto(x + 6, y + (ALTO_CAJA - _ALTO_GLIFO * 2) / 2, texto, escala=2)
 
-        # Regresa la Y donde termina este campo más el espacio para el siguiente
         return y + ALTO_CAJA + ESPACIADO * 2
 
-    # cerrar(): no hay recursos externos que liberar (no se usan librerías de
-    # terceros). Se deja por orden, para que sea igual que el resto del proyecto.
+    # No hay recursos externos que liberar (sin dependencias de
+    # terceros), se deja este metodo por simetria con el resto del proyecto.
     def cerrar(self):
-        # pass significa "no hacer nada"
         pass
